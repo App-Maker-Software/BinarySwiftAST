@@ -9,6 +9,12 @@ import Foundation
 import SwiftSyntax
 import BinarySwiftAST
 
+public func constructAST(from sourceCode: String) throws -> Data {
+    let sourceSyntax = try SyntaxParser.parse(source: sourceCode)
+    let node = try SyntaxToASTNodeBuilder().build(sourceSyntax)
+    return .init(node.data)
+}
+
 struct NodeFromSyntaxParseError: Error {}
 
 final class ASTNodeBuilder {
