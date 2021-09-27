@@ -1,0 +1,188 @@
+%{
+  from gyb_syntax_support import *
+  # -*- mode: Swift -*-
+  # Ignore the following admonition it applies to the resulting .swift file only
+}%
+//
+//  typealiases.swift
+//
+//  Created by Joseph Hinkle on 3/26/21.
+//  Copyright © 2021 App Maker Software LLC. All rights reserved.
+//
+//  DO NOT EDIT .swift file, it is automatically generated from the gyb file
+//
+
+%{
+    # note: not all nodes are found in SYNTAX_NODES for some reason. Check the python files (not included in project but are in the directory) for more info
+                
+    def nodeTypeId(node):
+        if node.collection_element_name == "":
+            if node.name == "TokenSyntax":
+                return 0
+            elif len(node.children) == 0:
+                return 254
+            else:
+                count = len(node.children)
+                return 1 + count
+        else:
+            return 1
+            
+    # sort them
+    sortedNodes = sorted(list(SYNTAX_NODES),key=lambda x:nodeTypeId(x))
+                    
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntaxStub"
+        elif node.is_base():
+            return "Any" + node.name + "Stub"
+        elif node.base_kind != "Syntax" and node.base_kind != "SyntaxCollection":
+            return "Any" + node.base_kind + "Stub"
+        else:
+            return node.collection_element_type
+    
+    baseKinds = []
+    for node in SYNTAX_NODES:
+        if node.is_base():
+            baseKinds.append(node.name)
+    
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntaxStub"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name + "Stub"
+        else:
+            return child.type_name
+            
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntax"
+        elif node.collection_element_type in baseKinds:
+            return "Any" + node.collection_element_type
+        else:
+            return node.collection_element_type
+                
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntax"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name
+        else:
+            return child.type_name
+                        
+    def swiftNameAndIndexToKey(child, i):
+        score = i
+        if child.is_optional:
+            score = score + 100
+        return "_" + child.swift_name + "_pos_" + str(score)
+}%
+import BinarySwiftAST
+
+
+// Protocols
+% for kind in baseKinds:
+public typealias LiveASTNodeCanCastAsAny${kind} = CanCastAsAny${kind}
+public typealias ArraySliceASTNodeCanCastAsAny${kind} = CanCastAsAny${kind}
+% end
+
+// Anys
+% for kind in baseKinds:
+public typealias LiveASTNodeAny${kind} = Any${kind}
+public typealias ArraySliceASTNodeAny${kind} = Any${kind}
+% end
+
+
+// Structs
+% count = 0
+% for node in sortedNodes:
+% if not node.is_base():
+% extraProtocol = ""
+% if node.base_type in baseKinds:
+    % extraProtocol = ", " + "CanCastAsAny" + node.base_kind + "Syntax"
+% end
+% if node.name in baseKinds:
+    % extraProtocol = ", " + "CanCastAsAny" + node.syntax_kind + "Syntax"
+% end
+% count = count + 1
+public typealias LiveASTNode${node.name} = ${node.name}
+public typealias ArraySliceASTNode${node.name} = ${node.name}
+% end
+% end
+
+
+
+//
+// extensions
+//
+// SyntaxWrapper Extensions
+public extension SyntaxWrapper {
+    /// Only use if you are SURE it is TokenSyntax
+    var _cast_asTokenSyntaxLiveASTNode: TokenSyntax? {
+        return _cast_asTokenSyntax
+    }
+    /// Only use if you are SURE it is TokenSyntax
+    var _cast_asTokenSyntaxArraySliceASTNode: TokenSyntax? {
+        return _cast_asTokenSyntax
+    }
+% for node in sortedNodes:
+% if not node.is_base():
+    /// Only use if you are SURE it is ${node.name}
+    var _cast_as${node.name}LiveASTNode: ${node.name}? {
+        return _cast_as${node.name}
+    }
+    var _cast_as${node.name}ArraySliceASTNode: ${node.name}? {
+        return _cast_as${node.name}
+    }
+% end
+% end
+}
+public extension AnySyntax {
+    var _asTokenSyntaxLiveASTNode: TokenSyntax? {
+        return _asTokenSyntax
+    }
+    var _asTokenSyntaxArraySliceASTNode: TokenSyntax? {
+        return _asTokenSyntax
+    }
+% for node in sortedNodes:
+% if not node.is_base():
+    var _as${node.name}LiveASTNode: ${node.name}? {
+        return _as${node.name}
+    }
+    var _as${node.name}ArraySliceASTNode: ${node.name}? {
+        return _as${node.name}
+    }
+% end
+% end
+}
+
+% for node in sortedNodes:
+% if node.is_base():
+public extension Any${node.name} {
+    % for node2 in sortedNodes:
+    % if not node2.is_base():
+    % if node2.base_kind == node.syntax_kind:
+    var _as${node2.name}LiveASTNode: ${node2.name}? {
+        return _as${node2.name}
+    }
+    var _as${node2.name}ArraySliceASTNode: ${node2.name}? {
+        return _as${node2.name}
+    }
+    % end
+    % end
+    % end
+}
+public extension CanCastAsAny${kind} {
+    % for node2 in sortedNodes:
+    % if not node2.is_base():
+    % if node2.base_kind == node.syntax_kind:
+    var _as${node2.name}Live: ${node2.name}? {
+        _as${node2.name}
+    }
+    var _as${node2.name}ArraySliceASTNode: ${node2.name}? {
+        _as${node2.name}
+    }
+    % end
+    % end
+    % end
+}
+% end
+% end

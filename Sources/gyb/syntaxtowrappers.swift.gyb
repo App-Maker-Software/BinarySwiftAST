@@ -1,0 +1,215 @@
+%{
+  from gyb_syntax_support import *
+  # -*- mode: Swift -*-
+  # Ignore the following admonition it applies to the resulting .swift file only
+}%
+//
+//  syntaxtowrappers.swift.gyb
+//
+//  Created by Joseph Hinkle on 3/29/21.
+//  Copyright © 2021 App Maker Software LLC. All rights reserved.
+//
+//  DO NOT EDIT .swift file, it is automatically generated from the gyb file
+//
+%{
+    baseKinds = []
+    baseKindNodes = []
+    for node in SYNTAX_NODES:
+        if node.is_base():
+            baseKinds.append(node.name)
+            baseKindNodes.append(node)
+    
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntax"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name
+        else:
+            return child.type_name
+                        
+    
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntax"
+        elif node.collection_element_type in baseKinds:
+            return "Any" + node.collection_element_type
+        else:
+            return node.collection_element_type
+                            
+    def nodeTypeId(node):
+        if node.collection_element_name == "":
+            if node.name == "TokenSyntax":
+                return 0
+            elif len(node.children) == 0:
+                return 254
+            else:
+                count = len(node.children)
+                return 1 + count
+        else:
+            return 1
+    
+    # sort them
+    sortedNodes = sorted(list(SYNTAX_NODES),key=lambda x:nodeTypeId(x))
+            
+    # ids
+    nodeIds = dict()
+    def nodeId(node):
+        return nodeIds[node.name]
+    # make ids
+    ids_count = 0
+    for node in sortedNodes:
+        if not node.is_base():
+            ids_count = ids_count + 1
+            nodeIds[node.name] = ids_count
+                        
+    def swiftNameAndIndexToKey(child, i):
+        score = i
+        if child.is_optional:
+            score = score + 100
+        return "_" + child.swift_name + "_pos_" + str(score)
+}%
+
+import SwiftSyntax
+import BinarySwiftAST
+import Foundation
+
+extension Syntax: SyntaxThatCanBuildASTNode {
+    public func buildASTNode(with deps: [ASTNode?], includeIds: Bool) throws -> ASTNode {
+        if let syntax = self.as(TokenSyntax.self) {
+            return try syntax.buildASTNode(with: deps, includeIds: includeIds)
+        % for node in SYNTAX_NODES:
+        % if not node.is_base():
+        } else if let syntax = self.as(${node.name}.self) {
+            return try syntax.buildASTNode(with: deps, includeIds: includeIds)
+        % end
+        % end
+        }
+        fatalError()
+    }
+    public func getDependencies() throws -> [DepInstruction] {
+        if let syntax = self.as(TokenSyntax.self) {
+            return try syntax.getDependencies()
+        % for node in SYNTAX_NODES:
+        % if not node.is_base():
+        } else if let syntax = self.as(${node.name}.self) {
+            return try syntax.getDependencies()
+        % end
+        % end
+        }
+        fatalError()
+    }
+}
+
+% for outernode in SYNTAX_NODES:
+% if outernode.is_base():
+extension ${outernode.name}: SyntaxThatCanBuildASTNode {
+    public func buildASTNode(with deps: [ASTNode?], includeIds: Bool) throws -> ASTNode {
+        % for node in SYNTAX_NODES:
+        % if not node.is_base():
+        % if node.base_kind == outernode.syntax_kind:
+        if let syntax = self.as(${node.name}.self) {
+            return try syntax.buildASTNode(with: deps, includeIds: includeIds)
+        }
+        % end
+        % end
+        % end
+        fatalError()
+    }
+    public func getDependencies() throws -> [DepInstruction] {
+        % for node in SYNTAX_NODES:
+        % if not node.is_base():
+        % if node.base_kind == outernode.syntax_kind:
+        if let syntax = self.as(${node.name}.self) {
+            return try syntax.getDependencies()
+        }
+        % end
+        % end
+        % end
+        fatalError()
+    }
+}
+% end
+% end
+
+
+
+
+
+
+
+% for node in SYNTAX_NODES:
+% if not node.is_base():
+% if node.collection_element_name == "":
+% structStyleInitArguments = []
+% structStyleInitArgumentNames = []
+extension ${node.name}: SyntaxThatCanBuildASTNode {
+    
+    public func buildASTNode(with deps: [ASTNode?], includeIds: Bool) throws -> ASTNode {
+        %if len(node.children) == 0:
+        return try BinarySwiftAST.buildASTNode(
+            id: ${nodeId(node)},
+            //id: includeIds ? syntax.id.hashValue : nil
+            properties: []
+        )
+        % else:
+        return try BinarySwiftAST.buildASTNode(
+            id: ${nodeId(node)},
+            //id: includeIds ? syntax.id.hashValue : nil,
+            properties: [
+            % for (i, child) in enumerate(node.children):
+             //   _existing${swiftNameAndIndexToKey(child, i)}: ${"deps["+str(i)+"]" if child.is_optional else "deps["+str(i)+"]"}${"" if i == len(node.children)-1 else ","}
+                 ${"deps["+str(i)+"]" if child.is_optional else "deps["+str(i)+"]"}${"" if i == len(node.children)-1 else ","}
+            % end
+            ]
+        )
+        % end
+    }
+    public func getDependencies() throws -> [DepInstruction] {
+        %if len(node.children) == 0:
+        return []
+        % else:
+        var deps: [DepInstruction] = []
+        % for (i, child) in enumerate(node.children):
+        let ${child.swift_name}Syntax = self.${child.swift_name}
+        % if child.is_optional:
+        if let ${child.swift_name}Syntax = ${child.swift_name}Syntax {
+            deps.append(DepInstruction(${child.swift_name}Syntax))
+        } else {
+            deps.append(DepInstruction())
+        }
+        % else:
+        deps.append(DepInstruction(${child.swift_name}Syntax))
+        % end
+        % end
+        return deps
+        % end
+    }
+}
+% end
+% end
+% end
+
+
+
+% for node in SYNTAX_NODES:
+% if not node.is_base():
+% if node.collection_element_name != "":
+
+extension ${node.name}: SyntaxThatCanBuildASTNode {
+    public func buildASTNode(with deps: [ASTNode?], includeIds: Bool) throws -> ASTNode {
+        return try BinarySwiftAST.buildASTNode(
+            id: ${nodeId(node)},
+            //id: includeIds ? syntax.id.hashValue : nil,
+            elements: deps.map {$0!}
+        )
+    }
+    public func getDependencies() throws -> [DepInstruction] {
+        return self.map { DepInstruction($0) }
+    }
+}
+
+% end
+% end
+% end
+
+

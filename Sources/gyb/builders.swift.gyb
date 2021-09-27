@@ -1,0 +1,119 @@
+%{
+  from gyb_syntax_support import *
+  # -*- mode: Swift -*-
+  # Ignore the following admonition it applies to the resulting .swift file only
+}%
+//
+//  builders.swift
+//
+//  Created by Joseph Hinkle on 3/27/21.
+//  Copyright © 2021 App Maker Software LLC. All rights reserved.
+//
+//  DO NOT EDIT .swift file, it is automatically generated from the gyb file
+//
+
+%{
+    # note: not all nodes are found in SYNTAX_NODES for some reason. Check the python files (not included in project but are in the directory) for more info
+                
+    def nodeTypeId(node):
+        if node.collection_element_name == "":
+            if node.name == "TokenSyntax":
+                return 0
+            elif len(node.children) == 0:
+                return 254
+            else:
+                count = len(node.children)
+                return 1 + count
+        else:
+            return 1
+            
+    # sort them
+    sortedNodes = sorted(list(SYNTAX_NODES),key=lambda x:nodeTypeId(x))
+        
+    baseKinds = []
+    for node in SYNTAX_NODES:
+        if node.is_base():
+            baseKinds.append(node.name)
+    
+    def typeIdToName(id):
+        if id == 0:
+            return "token syntax"
+        elif id == 1:
+            return "collection/list syntax"
+        elif id == 2:
+            return "syntax with 1 property"
+        else:
+            return "syntax with " + str(id-1) + " properties"
+            
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntax"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name
+        else:
+            return child.type_name
+            
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntax"
+        elif node.collection_element_type in baseKinds:
+            return "Any" + node.collection_element_type
+        else:
+            return node.collection_element_type
+            
+    def syntaxToBuildInstructionType(syntaxName):
+        if syntaxName == "AnySyntax":
+            return "AnySyntax"
+        elif "Any" in syntaxName:
+            return syntaxName + ""
+        else:
+            return syntaxName + ""
+                        
+    def swiftNameAndIndexToKey(child, i):
+        score = i
+        if child.is_optional:
+            score = score + 100
+        return "_" + child.swift_name + "_pos_" + str(score)
+}%
+
+import Foundation
+import BinarySwiftAST
+import BinarySwiftASTWrappers
+
+% for node in sortedNodes:
+% if not node.is_base():
+% extraProtocol = ""
+% if node.base_type in baseKinds:
+    % extraProtocol = ", " + "CanCastAsAny" + node.base_kind + "Syntax"
+% end
+% if node.name in baseKinds:
+    % extraProtocol = ", " + "CanCastAsAny" + node.syntax_kind + "Syntax"
+% end
+public func _build${node.name}(
+% if nodeTypeId(node) == 1: # list
+    _existing_els: [${nodeToTypeNameOrAnyOfType(node)}]
+% else: # not list
+% for (i, child) in enumerate(node.children):
+% if "Any" in childToTypeNameOrAnyOfType(child):
+    _existing${swiftNameAndIndexToKey(child,i)}: ${syntaxToBuildInstructionType(childToTypeNameOrAnyOfType(child)) + ("?" if child.is_optional else "")},
+% else:
+    _existing${swiftNameAndIndexToKey(child,i)}: ${syntaxToBuildInstructionType(child.type_name) + ("?" if child.is_optional else "")},
+% end
+% end
+    _give_this_void _give_this_void_to_help_wrapper_remover: Void
+% end
+) throws -> ${node.name} {
+    % if nodeTypeId(node) == 1: # list
+    .convert(from: try buildASTNode(id: ${node.name}.id, elements: _existing_els.map {
+        $0._node
+    }))
+    % else: # not list
+    .convert(from: try buildASTNode(id: ${node.name}.id, properties: [
+        % for (i, child) in enumerate(node.children):
+        _existing${swiftNameAndIndexToKey(child,i)}${"?" if child.is_optional else ""}._node,
+        % end
+    ]))
+    % end
+}
+% end
+% end

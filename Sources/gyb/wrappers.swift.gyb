@@ -1,0 +1,344 @@
+%{
+  from gyb_syntax_support import *
+  # -*- mode: Swift -*-
+  # Ignore the following admonition it applies to the resulting .swift file only
+}%
+//
+//  wrappers.swift
+//
+//  Created by Joseph Hinkle on 3/26/21.
+//  Copyright © 2021 App Maker Software LLC. All rights reserved.
+//
+//  DO NOT EDIT .swift file, it is automatically generated from the gyb file
+//
+
+%{
+    # note: not all nodes are found in SYNTAX_NODES for some reason. Check the python files (not included in project but are in the directory) for more info
+                
+    def nodeTypeId(node):
+        if node.collection_element_name == "":
+            if node.name == "TokenSyntax":
+                return 0
+            elif len(node.children) == 0:
+                return 254
+            else:
+                count = len(node.children)
+                return 1 + count
+        else:
+            return 1
+            
+    # sort them
+    sortedNodes = sorted(list(SYNTAX_NODES),key=lambda x:nodeTypeId(x))
+                    
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntaxStub"
+        elif node.is_base():
+            return "Any" + node.name + "Stub"
+        elif node.base_kind != "Syntax" and node.base_kind != "SyntaxCollection":
+            return "Any" + node.base_kind + "Stub"
+        else:
+            return node.collection_element_type
+    
+    baseKinds = []
+    for node in SYNTAX_NODES:
+        if node.is_base():
+            baseKinds.append(node.name)
+    
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntaxStub"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name + "Stub"
+        else:
+            return child.type_name
+            
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntax"
+        elif node.collection_element_type in baseKinds:
+            return "Any" + node.collection_element_type
+        else:
+            return node.collection_element_type
+                
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntax"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name
+        else:
+            return child.type_name
+                        
+    def swiftNameAndIndexToKey(child, i):
+        score = i
+        if child.is_optional:
+            score = score + 100
+        return "_" + child.swift_name + "_pos_" + str(score)
+}%
+import BinarySwiftAST
+
+
+// Wrapper Protocols
+% for kind in baseKinds:
+public protocol CanCastAsAny${kind}: SyntaxWrapper {}
+% end
+
+
+// toAny extensions
+% for kind in baseKinds:
+public extension CanCastAsAny${kind} {
+    func toAny${kind.replace("Syntax","")}() -> Any${kind} {
+        .init(_node: _node)
+    }
+}
+% end
+
+// SyntaxWrapper Anys
+% for kind in baseKinds:
+public struct Any${kind}: SyntaxWrapper {
+    public static func convert(from node: ASTNode) -> Any${kind} {
+        .init(_node: node)
+    }
+    
+    public static var id: UInt8 {
+        fatalError()
+    }
+    
+    public init(d: [UInt8], o: Int) {
+        fatalError()
+    }
+    public var _node: ASTNode
+    public init(_node: ASTNode) {
+        self._node = _node
+    }
+    
+    #if DEBUG
+    public var subs: [Sub] {
+        self._concreteValue.subs
+    }
+    #endif
+}
+% end
+
+// SyntaxWrapper Extensions
+public extension SyntaxWrapper {
+    /// Do not use unless you are really sure you have a TokenSyntax
+    var _cast_asTokenSyntax: TokenSyntax? {
+        if _node.syntaxType == TokenSyntax.id {
+            return TokenSyntax.convert(from: _node)
+        }
+        return nil
+    }
+% for node in sortedNodes:
+% if not node.is_base():
+    /// Do not use unless you are really sure you have a ${node.name}
+    var _cast_as${node.name}: ${node.name}? {
+        if _node.syntaxType == ${node.name}.id {
+            return ${node.name}.convert(from: _node)
+        }
+        return nil
+    }
+% end
+% end
+}
+public extension AnySyntax {
+    var _asTokenSyntax: TokenSyntax? {
+        if _node.syntaxType == TokenSyntax.id {
+            return TokenSyntax.convert(from: _node)
+        }
+        return nil
+    }
+% for node in sortedNodes:
+% if not node.is_base():
+    var _as${node.name}: ${node.name}? {
+        if _node.syntaxType == ${node.name}.id {
+            return ${node.name}.convert(from: _node)
+        }
+        return nil
+    }
+% end
+% end
+    var _concreteValue: SyntaxWrapper {
+        if let concrete = _asTokenSyntax {
+            return concrete
+        % for node in sortedNodes:
+        % if not node.is_base():
+        } else if let concrete = _as${node.name} {
+            return concrete
+        % end
+        % end
+        }
+        fatalError()
+    }
+}
+
+% for node in sortedNodes:
+% if node.is_base():
+public extension Any${node.name} {
+    % for node2 in sortedNodes:
+    % if not node2.is_base():
+    % if node2.base_kind == node.syntax_kind:
+    var _as${node2.name}: ${node2.name}? {
+        if _node.syntaxType == ${node2.name}.id {
+            return ${node2.name}.convert(from: _node)
+        }
+        return nil
+    }
+    % end
+    % end
+    % end
+    var _concreteValue: CanCastAsAny${node.name} {
+        if false {
+        % for node2 in sortedNodes:
+        % if not node2.is_base():
+        % if node2.base_kind == node.syntax_kind:
+        } else if let concrete = _as${node2.name} { // as? CanCastAsAny${node.name} {
+            return concrete
+        % end
+        % end
+        % end
+        }
+        fatalError()
+    }
+}
+public extension CanCastAsAny${kind} {
+    % for node2 in sortedNodes:
+    % if not node2.is_base():
+    % if node2.base_kind == node.syntax_kind:
+    var _as${node2.name}: ${node2.name}? {
+        self as? ${node2.name}
+    }
+    % end
+    % end
+    % end
+}
+% end
+% end
+
+// SyntaxWrapper Structs
+% count = 0
+% for node in sortedNodes:
+% if not node.is_base():
+% extraProtocol = ""
+% if node.base_type in baseKinds:
+    % extraProtocol = ", " + "CanCastAsAny" + node.base_kind + "Syntax"
+% end
+% if node.name in baseKinds:
+    % extraProtocol = ", " + "CanCastAsAny" + node.syntax_kind + "Syntax"
+% end
+% count = count + 1
+public struct ${node.name}: SyntaxWrapper${extraProtocol} {
+    public static var id: UInt8 = ${count} // body type id will be: ${nodeTypeId(node)}
+    
+    public var _node: ASTNode
+    
+    % if nodeTypeId(node) == 1: # list
+    /// all elements
+    public var _els: [${nodeToTypeNameOrAnyOfType(node)}] {
+        _node.elements.map {
+            % if "Any" in nodeToTypeNameOrAnyOfType(node):
+            ${nodeToTypeNameOrAnyOfType(node)}(_node: $0)
+            % else:
+            ${nodeToTypeNameOrAnyOfType(node)}.convert(from: $0)
+            % end
+        }
+    }
+    /// first element (nil if there are 0 elements)
+    public var _first: ${nodeToTypeNameOrAnyOfType(node)}? {
+        if let first = _node.element(i: 0) {
+            % if "Any" in nodeToTypeNameOrAnyOfType(node):
+            return ${nodeToTypeNameOrAnyOfType(node)}(_node: first)
+            % else:
+            return ${nodeToTypeNameOrAnyOfType(node)}.convert(from: first)
+            % end
+        }
+        return nil
+    }
+    /// last element (nil if there are 0 elements)
+    public var _last: ${nodeToTypeNameOrAnyOfType(node)}? {
+        let lastIndex = _node.count - 1
+        if lastIndex >= 0, let last = _node.element(i: lastIndex) {
+            % if "Any" in nodeToTypeNameOrAnyOfType(node):
+            return ${nodeToTypeNameOrAnyOfType(node)}(_node: last)
+            % else:
+            return ${nodeToTypeNameOrAnyOfType(node)}.convert(from: last)
+            % end
+        }
+        return nil
+    }
+    /// count, faster than doing `elements.count`
+    public var _count: Int {
+        _node.count
+    }
+    /// get an element at an index. returns nil if out of bounds
+    public func _element(i: Int) -> ${nodeToTypeNameOrAnyOfType(node)}? {
+        if let element = _node.element(i: i) {
+            % if "Any" in nodeToTypeNameOrAnyOfType(node):
+            return ${nodeToTypeNameOrAnyOfType(node)}(_node: element)
+            % else:
+            return ${nodeToTypeNameOrAnyOfType(node)}.convert(from: element)
+            % end
+        }
+        return nil
+    }
+    % else: # not list
+    % for (i, child) in enumerate(node.children):
+    % if "Any" in childToTypeNameOrAnyOfType(child):
+    % if child.is_optional:
+    /// ${child.swift_name}?
+    % else:
+    /// ${child.swift_name} (should be present unless we have bad data)
+    % end
+    public var ${swiftNameAndIndexToKey(child,i)}: ${childToTypeNameOrAnyOfType(child)}? {
+        if let propertyNode = _node.property(i: ${i}) {
+            return ${childToTypeNameOrAnyOfType(child)}(_node: propertyNode)
+        }
+        return nil
+    }
+    % else:
+    % if child.is_optional:
+    /// ${child.swift_name}?
+    % else:
+    /// ${child.swift_name} (should be present unless we have bad data)
+    % end
+    public var ${swiftNameAndIndexToKey(child,i)}: ${child.type_name}? {
+        if let propertyNode = _node.property(i: ${i}) {
+            return .convert(from: propertyNode)
+        }
+        return nil
+    }
+    % end
+    % end
+    % end
+        
+    public static func convert(from node: ASTNode) -> ${node.name} {
+        .init(_node: node)
+    }
+    
+    public init(d: [UInt8], o: Int) {
+        _node = ArraySliceASTNode(data: d, offset: o)
+    }
+    public init(_node: ASTNode) {
+        self._node = _node
+    }
+    
+    
+    #if DEBUG
+    /// in debug builds only
+    public var subs: [Sub] {
+        % if nodeTypeId(node) == 1: # list
+        _els.enumerated().map {
+            Sub(name: "[\($0.offset)]", syntaxWrapper: $0.element)
+        }
+        % else:
+        [
+        % for (i, child) in enumerate(node.children):
+            Sub(name: "${child.swift_name}", syntaxWrapper: ${swiftNameAndIndexToKey(child,i)}),
+        % end
+        ]
+        % end
+    }
+    #endif
+}
+% end
+% end

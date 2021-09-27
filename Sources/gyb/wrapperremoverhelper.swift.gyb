@@ -1,0 +1,153 @@
+%{
+  from gyb_syntax_support import *
+  # -*- mode: Swift -*-
+  # Ignore the following admonition it applies to the resulting .swift file only
+}%
+//
+//  wrapperremoverhelper.swift
+//
+//  Created by Joseph Hinkle on 3/26/21.
+//  Copyright © 2021 App Maker Software LLC. All rights reserved.
+//
+//  DO NOT EDIT .swift file, it is automatically generated from the gyb file
+//
+
+%{
+    # note: not all nodes are found in SYNTAX_NODES for some reason. Check the python files (not included in project but are in the directory) for more info
+                
+    def nodeTypeId(node):
+        if node.collection_element_name == "":
+            if node.name == "TokenSyntax":
+                return 0
+            elif len(node.children) == 0:
+                return 254
+            else:
+                count = len(node.children)
+                return 1 + count
+        else:
+            return 1
+            
+    # sort them
+    sortedNodes = sorted(list(SYNTAX_NODES),key=lambda x:nodeTypeId(x))
+                    
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntaxStub"
+        elif node.is_base():
+            return "Any" + node.name + "Stub"
+        elif node.base_kind != "Syntax" and node.base_kind != "SyntaxCollection":
+            return "Any" + node.base_kind + "Stub"
+        else:
+            return node.collection_element_type
+    
+    baseKinds = []
+    for node in SYNTAX_NODES:
+        if node.is_base():
+            baseKinds.append(node.name)
+    
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntaxStub"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name + "Stub"
+        else:
+            return child.type_name
+            
+    def nodeToTypeNameOrAnyOfType(node):
+        if node.collection_element_type == "Syntax":
+            return "AnySyntax"
+        elif node.collection_element_type in baseKinds:
+            return "Any" + node.collection_element_type
+        else:
+            return node.collection_element_type
+                
+    def childToTypeNameOrAnyOfType(child):
+        if child.type_name == "Syntax":
+            return "AnySyntax"
+        elif child.type_name in baseKinds:
+            return "Any" + child.type_name
+        else:
+            return child.type_name
+    
+    alreadyAddedKey = dict()
+}%
+
+let nodeAliases = [
+    "SyntaxWrapper",
+    "AnySyntax",
+    % for kind in baseKinds:
+    "CanCastAsAny${kind}",
+    "Any${kind}",
+    % end
+    % for node in sortedNodes:
+    % if not node.is_base():
+    "${node.name}",
+    % end
+    % end
+    "TokenSyntax"
+]
+
+let nodesWithListBodies = [
+    % for node in sortedNodes:
+    % if not node.is_base():
+    % if nodeTypeId(node) == 1: # is a list
+    "${node.name}",
+    % end
+    % end
+    % end
+]
+
+let nodesWithPropertyBodies = [
+    % for node in sortedNodes:
+    % if not node.is_base():
+    % if nodeTypeId(node) != 1: # is not a list
+    "${node.name}",
+    % end
+    % end
+    % end
+]
+
+let nodeToId: [String:UInt8] = [
+    "TokenSyntax" : 0,
+    % countt = 0
+    % for node in sortedNodes:
+    % if not node.is_base():
+    % countt = countt + 1
+    "${node.name}" : ${countt},
+    % end
+    % end
+]
+
+// todo: non-optional properties in the wrapper object api should for a try-catch style
+
+
+let nodeProperties = [
+    % for node in sortedNodes:
+    % if not node.is_base():
+    % if nodeTypeId(node) != 1: # not a list
+    % for (i, child) in enumerate(node.children):
+    % keyToAdd = "_" + child.swift_name + "_pos_" + str(i + 100 if child.is_optional else i)
+    % if not (keyToAdd in alreadyAddedKey):
+    % alreadyAddedKey[keyToAdd] = True
+    "${keyToAdd}": "property(i: ${i})", // for ${node.name}
+    %end
+    % end
+    % end
+    % end
+    % end
+    "_text" : "text"
+]
+
+let typeIds: [String : UInt8] = [
+    % count = 0
+    % for node in sortedNodes:
+    % if not node.is_base():
+    % count = count + 1
+    "${node.name}" : ${count},
+    % end
+    % end
+    "TokenSyntax" : 0
+]
+
+
+// builders

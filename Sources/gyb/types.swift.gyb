@@ -1,0 +1,160 @@
+%{
+  from gyb_syntax_support import *
+  # -*- mode: Swift -*-
+  # Ignore the following admonition it applies to the resulting .swift file only
+}%
+//
+//  types.swift
+//
+//  Created by Joseph Hinkle on 3/26/21.
+//  Copyright © 2021 App Maker Software LLC. All rights reserved.
+//
+//  DO NOT EDIT .swift file, it is automatically generated from the gyb file
+//
+
+%{
+    # note: not all nodes are found in SYNTAX_NODES for some reason. Check the python files (not included in project but are in the directory) for more info
+
+        
+    def nodeTypeId(node):
+        if node.collection_element_name == "":
+            if node.name == "TokenSyntax":
+                return 0
+            elif len(node.children) == 0:
+                return 254
+            else:
+                count = len(node.children)
+                return 1 + count
+        else:
+            return 1
+            
+    # sort them
+    sortedNodes = sorted(list(SYNTAX_NODES),key=lambda x:nodeTypeId(x))
+    
+    highest_property_count_added_to = 0
+    collection_count = 0
+    total_properties_count = 0
+    property_counts = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+    no_child_count = 0
+    for node in SYNTAX_NODES:
+        if not node.is_base():
+            id = nodeTypeId(node)
+            if id == 1:
+                collection_count = collection_count + 1
+            elif id == 254:
+                no_child_count = no_child_count + 1
+            else:
+                total_properties_count = total_properties_count + id - 1
+                highest_property_count_added_to = max(highest_property_count_added_to, id-2)
+                property_counts[id-2] = property_counts[id-2] + 1
+
+    
+    def typeIdToName(id):
+        if id == 0:
+            return "token syntax"
+        elif id == 1:
+            return "collection/list syntax"
+        elif id == 2:
+            return "syntax with 1 property"
+        elif id == 254:
+            return "syntax with no children"
+        else:
+            return "syntax with " + str(id-1) + " properties"
+        
+}%
+
+// body type
+// 0 = token syntax
+// 1 = collection/list syntax
+// 2 = syntax with 1 property
+// 3 = syntax with 2 properties
+// 4 = syntax with 3 properties
+// ...
+// 1 + n = syntax with n properties where n is a positive integer
+// 253 = syntax with 252 properties
+// 254 = syntax with no children
+// 255 = nil property
+
+// note: all properties are nullable so that we can handle cases of bad data
+
+//
+// body type definition
+//
+public func syntaxTypeToBodyType(syntaxType: UInt8) -> UInt8 {
+    if syntaxType == 0 {
+        return 0 // token syntax
+    % count = collection_count
+    } else if syntaxType <= ${count} {
+        return 1 // collection/list syntax
+    % for (i,property_count) in enumerate(property_counts):
+    % if property_count > 0:
+    % count = count + property_count
+    } else if syntaxType <= ${count} {
+        return ${i + 2} // syntaxes with ${i + 1} properties (there are ${property_count} syntaxes in this body type group)
+    % end
+    % end
+    } else if syntaxType == 254 || syntaxType == 255 {
+        return syntaxType // nil
+    } else {
+        // unknown id. just return 255 (nil) for now
+        return 255
+    }
+}
+
+//
+// stats, no functional code below
+//
+
+//
+// counts
+//
+// ----------------------------------------
+// total syntaxes: ${len(sortedNodes) + 1}
+// total different type ids possible: ${highest_property_count_added_to+4}
+// total amount of properties on all syntaxes: ${total_properties_count + 1}
+// ----------------------------------------
+//body id/      |
+// | id | count | descriptions
+// | 0  |  1    | token syntaxes
+// | 1  |  ${collection_count}   | collection/list syntaxes
+// | 2  |  ${property_counts[0]}   | syntaxes with 1 property
+% for (i,property_count) in enumerate(property_counts):
+% if i > 0:
+// | ${i + 2} ${" " if i < 8 else ""}|  ${property_count}   ${" " if i >= 5 else ""}| syntaxes with ${i + 1} properties
+%end
+%end
+// | 254|  ${no_child_count}    | syntaxes with no children
+
+// we don't ever use these in the code (it's to keep the binary tiny), so just use this as a reference
+/*
+TokenSyntax
+    - syntax type id: 0
+    - type: 0 (token syntax)
+    - children:
+        - text: String?
+
+% count = 0
+% for node in sortedNodes:
+% if not node.is_base():
+${node.name}
+    % if len(node.children) == 1:
+    % if node.children[0].is_optional:
+    */ fatalErrorrr("the current design doesn't support structs with only one property when that property is optional")
+    % end
+    % end
+    % count = count + 1
+    - syntax type id: ${count}
+    - body type: ${nodeTypeId(node)} (${typeIdToName(nodeTypeId(node))})
+    % if nodeTypeId(node) == 1: # not list
+    - children:
+        elements: ${node.collection_element_type}
+    % else:
+    - children:
+    % for child in node.children:
+        -- ${child.swift_name}: ${child.type_name + ("?" if child.is_optional else "")}
+    % end
+    % end
+
+% end
+% end
+*/
