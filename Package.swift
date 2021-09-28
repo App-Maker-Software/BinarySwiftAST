@@ -14,8 +14,12 @@ let package = Package(
             name: "BinarySwiftASTWrappers",
             targets: ["BinarySwiftASTWrappers","WrapperBuilders"]
         ),
-        .library(name: "BinarySwiftASTConstructor", targets: ["BinarySwiftASTConstructor"]),
-        .executable(name: "ASTWrapperRemoverCLI", targets: ["ASTWrapperRemoverCLI"])
+        .library(
+            name: "BinarySwiftASTConstructor",
+            targets: ["BinarySwiftASTConstructor"]),
+        .library(
+            name: "ASTWrapperRemover",
+            targets: ["ASTWrapperRemover"]),
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -56,16 +60,13 @@ let package = Package(
             dependencies: ["SwiftSyntax","BinarySwiftASTConstructor","BinarySwiftASTWrappers","WrapperBuilders","BinarySwiftAST"]),
 
 
-        // ASTWrapperRemoverCLI
+        // ASTWrapperRemover
         .target(
             name: "ASTWrapperRemover",
-            dependencies: ["BinarySwiftAST","SwiftSyntax","BinarySwiftASTWrappers","WrapperBuilders","Files"]),
-        .target(
-            name: "ASTWrapperRemoverCLI",
-            dependencies: ["ASTWrapperRemover","Files"]),
+            dependencies: ["BinarySwiftAST","BinarySwiftASTWrappers","WrapperBuilders","Files"]),
         .testTarget(
             name: "ASTWrapperRemoverTests",
-            dependencies: ["ASTWrapperRemover","SwiftSyntax"]),
+            dependencies: ["ASTWrapperRemover"]),
         
 
         // test packing and unpacking

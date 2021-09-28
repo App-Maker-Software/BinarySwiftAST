@@ -50,7 +50,7 @@ Replace `<#Specify Product Name#>` with the product in BinarySwiftAST that you w
 | BinarySwiftAST | Just the core `ASTNode` type and tooling |
 | BinarySwiftASTWrappers | Core plus AST node type wrappers |
 | BinarySwiftASTConstructor | Builds a BinarySwiftAST tree by using [SwiftSyntax](https://github.com/apple/swift-syntax) |
-| ASTWrapperRemoverCLI | A CLI tool to remove node type wrapper usage from `.swift` source files |
+| ASTWrapperRemover | A  tool to remove node type wrapper usage from `.swift` source files |
 
 ## Usage
 
@@ -170,7 +170,7 @@ import BinarySwiftASTWrappers
 let wrappedASTNode: SourceFileSyntax = SourceFileSyntax.convert(from: astNode)
 ```
 
-### Using `ASTWrapperRemoverCLI`
+### Using `ASTWrapperRemover`
 
 The purpose of this module is to convert a `.swift` file which uses `BinarySwiftASTWrappers` to an identical one that only relies on `BinarySwiftAST` (without wrappers). The reason you would want to remove the wrappers is that they leave a large footprint, which is undesirable for some wanting to have the AST usable somewhere like a mobile device.
 
@@ -183,20 +183,7 @@ let ifKeyword: ASTNode = ifStmtSyntax.property(i: 2)!
 
 It was able to convert it to a property access for element 2 because of the `pos_2` in the property name.
 
-To run it yourself in the terminal: 
-
-```bash
-ast-wrapper-remover path/to/source/folder
-```
-
-This will perform a deep recursion through the source directory and in-place the re-written swift files.
-
-There are a few side effects to running `ast-wrapper-remover`:
-1. All leading whitespace will be removed
-2. Each file's name will have `_generated` prefixed to it
-3. Every case of `_for_wrapper_version` will be removed
-
-These side effects are both to ensure developers realize that they are *not* supposed to edit the generated file and to provide a new file name or method name which won't collide with the previous one.
+This this product is used by the [Swift Interpreter's Developer CLI](https://github.com/App-Maker-Software/SwiftInterpreter/blob/main/Sources/DevCLI).
 
 ## Building `.gyb` Files
 

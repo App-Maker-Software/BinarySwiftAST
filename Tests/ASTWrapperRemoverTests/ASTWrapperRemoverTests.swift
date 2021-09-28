@@ -11,8 +11,20 @@ extension SyntaxWrapper: {}
         let expected_result = """
 extension ASTNode: {}
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
+        XCTAssertEqual(expected_result, changed)
+    }
+    
+    func test_compiler_condition() throws {
+        let original = """
+#if INCLUDE_WRAPPERS
+#endif
+"""
+        let expected_result = """
+#if true
+#endif
+"""
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -23,8 +35,7 @@ StructDeclSyntax(data: .init(viewData), offset: 0)
         let expected_result = """
 ArraySliceASTNode(data: .init(viewData), offset: 0)
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -37,8 +48,7 @@ let ok = thing.getAllChildrenArraySliceASTNode()
 let ok = thing.allChildren as! [LiveASTNode]
 let ok = thing.allChildren as! [ArraySliceASTNode]
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -51,8 +61,7 @@ import WrapperBuilders
 import BinarySwiftAST
 
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -63,8 +72,7 @@ func test_for_wrapper_version() {}
         let expected_result = """
 func test() {}
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -80,8 +88,7 @@ extension ASTNode: {
     let x = self.text
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -92,8 +99,7 @@ extension PoundFunctionExprSyntax: {}
         let expected_result = """
 extension ASTNode: {}
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -104,8 +110,7 @@ func doSomething(with syntaxWrapper: SyntaxWrapper) -> {}
         let expected_result = """
 func doSomething(with syntaxWrapper: ASTNode) -> {}
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -116,8 +121,7 @@ func doSomething(with token: TokenSyntax) -> {}
         let expected_result = """
 func doSomething(with token: ASTNode) -> {}
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -133,8 +137,7 @@ func doSomething(with token: ASTNode) -> {
     let string = token.text
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -149,8 +152,7 @@ func doSomething(with token: ASTNode) -> {
     token.text
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -166,8 +168,7 @@ func doSomething(with token: ASTNode) -> {
     let string = token.property(i: 0)
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -182,8 +183,7 @@ func doSomething(with token: ASTNode) -> {
     self.text
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -199,8 +199,7 @@ func doSomething(with token: ASTNode) -> {
     token.property(i: 0)
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -215,8 +214,7 @@ func doSomething(with token: ASTNode) -> {
     let string = token.property(i: 6)
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -231,8 +229,7 @@ func doSomething(with token: ASTNode) -> {
     let string = token.property(i: 6)
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         // that they are NOT equal
         XCTAssertNotEqual(expected_result, changed)
     }
@@ -248,8 +245,7 @@ func doSomething(with token: ASTNode) -> {
     let string = token.property(i: 6)
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -260,8 +256,7 @@ doSomething(y: prefix._postfixExpression_pos_1, token: ParameterClauseSyntax)
         let expected_result = """
 doSomething(y: prefix.property(i: 1), token: ASTNode)
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -272,8 +267,7 @@ doSomething(token: ParameterClauseSyntax)
         let expected_result = """
 doSomething(token: ASTNode)
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -284,8 +278,7 @@ doSomething(with token: ParameterClauseSyntax)
         let expected_result = """
 doSomething(with token: ASTNode)
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -296,8 +289,7 @@ let expressionValue = evalConfig(prefix._postfixExpression_pos_1._concreteValue,
         let expected_result = """
 let expressionValue = evalConfig(prefix.property(i: 1), simulatorControls)
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -308,8 +300,7 @@ value._asPoundFunctionExprSyntax
         let expected_result = """
 value.as(typeId: 52)
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -323,8 +314,7 @@ if let callIdentifierExpression = funcCall._calledExpression_pos_0._asIdentifier
 if let callIdentifierExpression = funcCall.property(i: 0).as(typeId: 74) {
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     func test_cast3() throws {
@@ -336,8 +326,7 @@ if let callIdentifierExpression = funcCall._calledExpression_pos_0._cast_asIdent
 if let callIdentifierExpression = funcCall.property(i: 0).as(typeId: 74) {
 }
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -348,8 +337,7 @@ let funcCallName = callIdentifierExpression._identifier_pos_0._text
         let expected_result = """
 let funcCallName = callIdentifierExpression.property(i: 0).text
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -360,8 +348,7 @@ let argStrings = funcCall._argument_pos_103?._els
         let expected_result = """
 let argStrings = funcCall.property(i: 3)?.elements
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     func test_els() throws {
@@ -371,8 +358,7 @@ let argStrings = funcCall._argumentList_pos_2._els
         let expected_result = """
 let argStrings = funcCall.property(i: 2).elements
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         XCTAssertEqual(expected_result, changed)
     }
     
@@ -395,8 +381,7 @@ let exampleClosure = try! buildASTNode(id: 169, properties: [
     ]
 )
 """
-        let sourceFile = try SyntaxParser.parse(source: original)
-        let changed = try CommandLineTool.proccess(sourceFile)
+        let changed = removerWrapperCode(from: original)
         print(changed)
         XCTAssertEqual(expected_result, changed)
     }
