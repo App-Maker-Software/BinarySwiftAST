@@ -194,9 +194,9 @@ This this product is used by the [Swift Interpreter's Developer CLI](https://git
 
 Building instructions are given for each product.
 
-### Building `BinarySwiftAST` and `BinarySwiftASTWrappers`
+### Building `BinarySwiftAST`, `BinarySwiftASTWrappers`, and `ASTWrapperRemover`
 
-Nothing complicated. Both should build easily as they're pure Swift with no dependencies.
+Nothing complicated. Both should build easily as they're pure Swift.
 
 ### Building `BinarySwiftASTConstructor`
 
@@ -207,28 +207,6 @@ If you are just wishing to generate some BinarySwiftAST data, you can use the `s
 ```bash
 brew install App-Maker-Software/tools/swift-ast
 ```
-
-### Building `ASTWrapperRemoverCLI`
-
-Like `BinarySwiftASTConstructor`, `ASTWrapperRemoverCLI` also depends on `SwiftSyntax` so much written above applies as well.
-
-To build the CLI tool manually, run:
-
-```bash
-swift build -c release
-```
-
-And then you will find the CLI executable at `.build/release/ASTWrapperRemoverCLI`.
-
-If you wish to install the CLI system wide, run:
-
-```bash
-cd .build/release
-sudo rm /usr/local/bin/ast-wrapper-remover
-sudo cp -f ASTWrapperRemoverCLI /usr/local/bin/ast-wrapper-remover
-```
-
-If you are just wishing to run the wrapper removal tool without building from source, a prebuilt binary is supplied in [SwiftInterpreter](http://github.com/App-Maker-Software/SwiftInterpreter) under `scripts`.
 
 ## Tests
 
