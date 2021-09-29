@@ -205,7 +205,7 @@ As this product depends on [SwiftSyntax](https://github.com/apple/swift-syntax),
 If you are just wishing to generate some BinarySwiftAST data, you can use the `swiftast` CLI tool maintained by App Maker. That way you don't have to build `BinarySwiftASTConstructor` from source.
 
 ```bash
-brew install App-Maker-Software/tools/swiftast
+brew install App-Maker-Software/tools/swift-ast
 ```
 
 ### Building `ASTWrapperRemoverCLI`
