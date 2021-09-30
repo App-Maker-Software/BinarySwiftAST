@@ -183,7 +183,7 @@ let ifKeyword: ASTNode = ifStmtSyntax.property(i: 2)!
 
 It was able to convert it to a property access for element 2 because of the `pos_2` in the property name.
 
-This this product is used by the [Swift Interpreter's Developer CLI](https://github.com/App-Maker-Software/SwiftInterpreter/blob/main/Sources/DevCLI).
+This this product is used by the [Swift Interpreter's Developer CLI](https://github.com/App-Maker-Software/SwiftInterpreterSource/blob/main/Tools/DevCLI).
 
 ## Building `.gyb` Files
 
